@@ -21,6 +21,10 @@ from Resource_Allocation import *
 from Continuous_Learning_and_Feedback import *
 import os
 
+st.set_page_config(page_title="Crime Nexus (CT-DFIR-01)", page_icon="🚔", layout="wide")
+st.warning("⚠️ **PROOF-OF-CONCEPT — NOT FOR OPERATIONAL USE** | CT-DFIR-01 Research & Analytics System")
+
+
 
 root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 

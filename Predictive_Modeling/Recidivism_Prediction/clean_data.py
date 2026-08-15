@@ -15,8 +15,6 @@ def clean_recividism_model(acused):
 
     desired_ratio = len(minority_class) / len(majority_class)
 
-
-
     # Randomly undersample the majority class
     undersampled_majority = random.sample(list(majority_class.index), int(len(majority_class) * desired_ratio))
 
