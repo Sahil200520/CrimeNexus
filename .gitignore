@@ -1,3 +1,25 @@
+# Python Environment & Cache
 venv/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Data & Database Exclusions
 datasets/
+*.sqlite
+*.sqlite3
+*.db
 issue/
+
+# Environment Variables & Secrets
+.env
+.env.local
+
+# Operating System Files
+*:Zone.Identifier
+.DS_Store
+Thumbs.db
+
+# Machine Learning & H2O Artifacts
+h2o_logs/
+*.log
