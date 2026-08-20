@@ -101,7 +101,7 @@ Open your browser at `http://localhost:8501`.
 ---
 
 ## Project Governance Documents
-All project governance decision records and impact assessments are available in `docs/governance/`:
+All project governance decision records and impact assessments are indexed in [**Governance Master Framework**](docs/governance.md) (`docs/governance/`):
 - [Ethical AI & Bias Impact Assessment](docs/governance/ethical_ai_impact_assessment.md) ([Root Link](ethical_ai_impact_assessment.md))
 - [Data Licensing & Fallback Catalog](docs/governance/data_licensing_catalog.md) ([Root Link](data_licensing_catalog.md))
 - [Team Roster](docs/governance/team_roster.md)
