@@ -1,25 +1,37 @@
-# Python Environment & Cache
+# Python Environment & Cache Exclusions
 venv/
+.venv/
 __pycache__/
 *.py[cod]
 *$py.class
+.pytest_cache/
+.coverage
 
 # Data & Database Exclusions
 datasets/
 *.sqlite
 *.sqlite3
 *.db
+*.db-journal
 issue/
 
-# Environment Variables & Secrets
+# Environment Variables & Secrets Exclusion
 .env
+.env.*
 .env.local
+!.env.example
 
-# Operating System Files
+# Operating System Files & Windows Metadata
 *:Zone.Identifier
+*Zone.Identifier*
+Zone.Identifier
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Machine Learning & H2O Artifacts
+# Machine Learning & H2O Temporary Logs and Artifacts
 h2o_logs/
+h2o_tmp/
+.h2o/
 *.log
+*.tmp

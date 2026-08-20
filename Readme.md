@@ -101,10 +101,13 @@ Open your browser at `http://localhost:8501`.
 ---
 
 ## Project Governance Documents
-All Week 1 governance decision records are available in `docs/governance/`:
+All project governance decision records and impact assessments are available in `docs/governance/`:
+- [Ethical AI & Bias Impact Assessment](docs/governance/ethical_ai_impact_assessment.md) ([Root Link](ethical_ai_impact_assessment.md))
+- [Data Licensing & Fallback Catalog](docs/governance/data_licensing_catalog.md) ([Root Link](data_licensing_catalog.md))
 - [Team Roster](docs/governance/team_roster.md)
 - [Legal Opinion Memo](docs/governance/legal_opinion_memo.md)
 - [Decision Record: Caste Removal](docs/governance/decision_record_caste_removal.md)
 - [Decision Record: Recidivism Scope](docs/governance/recidivism_scope_decision.md)
 - [Decision Record: Data Source](docs/governance/data_source_decision.md)
 - [Data Privacy & PII Handling Policy](docs/governance/data_privacy_policy.md)
+
