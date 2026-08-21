@@ -3,7 +3,7 @@ from streamlit_option_menu import option_menu
 import pandas as pd
 import numpy as np
 import streamlit.components.v1 as components
-from pulp import LpVariable, LpProblem, LpMaximize, lpSum, value
+from pulp import LpVariable, LpProblem, LpMaximize, lpSum, value, PULP_CBC_CMD
 
 def optimise_resource_allocation(district_name, sanctioned_asi, sanctioned_chc, sanctioned_cpc):
     # Initialize the problem
@@ -37,7 +37,7 @@ def optimise_resource_allocation(district_name, sanctioned_asi, sanctioned_chc, 
     st.write("Calculating crime severity based on crime types and crime frequency for allocating resources accordingly...")
 
     # Solve the problem
-    problem.solve()
+    problem.solve(PULP_CBC_CMD(msg=False))
 
     # Extract results
     district_name['Allocated ASI'] = [asi_vars[i].varValue for i in district_name.index]

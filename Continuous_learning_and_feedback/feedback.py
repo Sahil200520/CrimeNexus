@@ -19,6 +19,9 @@ def send_feedback_session_invitation(session_date, session_time, email_addresses
     for email_address in email_addresses:
         receiver_email = email_address
         password = os.environ.get('EMAIL_PASSWORD')
+        if not password:
+            st.warning("⚠️ Email password (EMAIL_PASSWORD environment variable) is not configured. Email invitation skipped.")
+            return
         subject = f"Invitation: Predictive Guardians Feedback Session on {session_date.strftime('%B %d, %Y')} at {session_time.strftime('%I:%M %p')}"
 
         body = f"""

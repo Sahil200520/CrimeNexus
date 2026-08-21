@@ -138,7 +138,8 @@ def store_feedback_data(feedback_data):
     feedback_file_path = os.path.join(root_dir, 'Component_datasets', 'Feedback.csv')
     try:
         feedback_df = pd.read_csv(feedback_file_path)
-        feedback_df = feedback_df.append(feedback_data, ignore_index=True)
+        new_row = pd.DataFrame([feedback_data])
+        feedback_df = pd.concat([feedback_df, new_row], ignore_index=True)
         feedback_df.to_csv(feedback_file_path, index=False)
     except FileNotFoundError:
         feedback_df = pd.DataFrame([feedback_data])

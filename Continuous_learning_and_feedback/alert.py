@@ -18,6 +18,9 @@ def send_alert(avg_rating, rating_threshold, negative_feedback_count, negative_f
 
     receiver_email = "vishalkumars.work@gmail.com"
     password = os.environ.get('EMAIL_PASSWORD')
+    if not password:
+        st.warning("⚠️ Email password (EMAIL_PASSWORD environment variable) is not configured. Alert email skipped.")
+        return
     subject = f"User Feedback Alert - System Approaching Thresholds"
 
     body = f"""

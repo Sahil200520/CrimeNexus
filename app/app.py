@@ -89,7 +89,7 @@ if selected == "Home":
         )
         if st.button("Learn More"):
             st.session_state.selected_page = "Documentation and Resources"
-            st.experimental_rerun()
+            st.rerun()
 
     with col2:
         data_file_path = os.path.join(root_dir, 'assets', 'Home_Page_image.jpg')
@@ -104,16 +104,20 @@ if selected == "Crime Pattern Analysis":
 
     @st.cache_data
     def load_data():
-        # Get GeoJSON data of all district co-ordinates of Karnataka
-        url = "https://raw.githubusercontent.com/adarshbiradar/maps-geojson/master/states/karnataka.json"
-        response = requests.get(url)
-        geojson_data = response.json()
+        geojson_data = {}
+        try:
+            url = "https://raw.githubusercontent.com/adarshbiradar/maps-geojson/master/states/karnataka.json"
+            response = requests.get(url, timeout=10)
+            if response.status_code == 200:
+                geojson_data = response.json()
+        except Exception as e:
+            st.error(f"Failed to fetch GeoJSON map data: {e}")
         data_file_path = os.path.join(root_dir, 'Component_datasets', 'Crime_Pattern_Analysis_Cleaned.csv')
 
         crime_pattern_analysis = pd.read_csv(data_file_path)
         mean_lat = crime_pattern_analysis['Latitude'].mean()
         mean_lon = crime_pattern_analysis['Longitude'].mean()
-        return mean_lat,mean_lon, geojson_data, crime_pattern_analysis
+        return mean_lat, mean_lon, geojson_data, crime_pattern_analysis
 
 
 
