@@ -1,154 +1,210 @@
-import streamlit as st
-from streamlit_option_menu import option_menu
-import pandas as pd
-import plotly.express as px
-from statsmodels.tsa.seasonal import seasonal_decompose
-import folium
-from folium import plugins
-from sklearn.cluster import DBSCAN
-import numpy as np
-import requests
-import plotly.io as pio
-import streamlit.components.v1 as components
-import matplotlib.pyplot as plt
-import seaborn as sns
-from streamlit_folium import folium_static
-import pickle
-import h2o
-from h2o.automl import H2OAutoML
-import pandas as pd
-import folium
-from folium.plugins import HeatMap, Fullscreen
-from sklearn.cluster import DBSCAN
-from sklearn.preprocessing import LabelEncoder
-from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import calinski_harabasz_score
 import os
-import joblib
 import json
+import joblib
+import pandas as pd
+import streamlit as st
+import h2o
 
+# =========================================================
+# PROJECT PATHS
+# =========================================================
 
+root_dir = os.path.abspath(
+    os.path.join(
+        os.path.dirname(__file__),
+        "..",
+    )
+)
 
-# Determine the root directory of the project
-root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+dataset_path = os.path.join(
+    root_dir,
+    "Component_datasets",
+    "Recidivism_cleaned_data.csv",
+)
+
+model_dir = os.path.join(
+    root_dir,
+    "models",
+    "Recidivism_model",
+)
+
+model_file_path = os.path.join(
+    model_dir,
+    "StackedEnsemble_BestOfFamily_2_AutoML_1_20240719_183320.zip",
+)
+
+scaler_path = os.path.join(
+    model_dir,
+    "scaler.pkl",
+)
+
+frequency_path = os.path.join(
+    model_dir,
+    "frequency_encoding.json",
+)
+
+MODEL_FEATURES = [
+    "District_Name",
+    "age",
+    "Profession",
+    "PresentCity",
+]
+
+# =========================================================
+# H2O INITIALIZATION
+# =========================================================
+
+@st.cache_resource
+def init_h2o():
+    """
+    Initialize H2O once per Streamlit session.
+    """
+    try:
+        h2o.init(nthreads=-1, max_mem_size="2G")
+        return True
+    except Exception:
+        return False
+
+# =========================================================
+# DATA LOADER
+# =========================================================
 
 @st.cache_data
 def load_data_recidivism():
-    # Construct the file path
-    data_file_path = os.path.join(root_dir, 'Component_datasets', 'Recidivism_cleaned_data.csv')
-    return pd.read_csv(data_file_path)
+    if not os.path.exists(dataset_path):
+        st.error(f"Recidivism dataset not found:\n\n{dataset_path}")
+        return None
 
+    try:
+        dataframe = pd.read_csv(dataset_path)
+        if dataframe.empty:
+            st.warning("Recidivism dataset contains no records.")
+            return None
+        return dataframe
+    except Exception as error:
+        st.error(f"Unable to load recidivism dataset: {error}")
+        return None
 
-# Load the model
 @st.cache_resource
 def load_model_recidivism():
-    model_file_path = os.path.join(root_dir, 'models', 'Recidivism_model', 'StackedEnsemble_BestOfFamily_2_AutoML_1_20240719_183320.zip')
-    saved_model = h2o.import_mojo(model_file_path)
-    return saved_model
+    if not os.path.exists(model_file_path):
+        raise FileNotFoundError(f"Recidivism MOJO model not found:\n{model_file_path}")
 
-# @st.cache_data
-# def load_data_crime_type():
-#     data_file_path = os.path.join(root_dir, 'Component_datasets', 'Crime_Type_cleaned_data.csv')
-#     return pd.read_csv(data_file_path)
+    if not init_h2o():
+        raise RuntimeError("Java Runtime Environment (JRE 8+) is required for H2O AutoML models.")
 
+    return h2o.import_mojo(model_file_path)
 
-
-# Load the model
 @st.cache_resource
-def load_model_crime_type():
-    model_file_path = os.path.join(root_dir, 'models', 'Crime_Type_Prediction', 'GBM_1_AutoML_2_20240521_83242.zip')
-    saved_model = h2o.import_mojo(model_file_path)
-    return saved_model
+def load_scaler():
+    if not os.path.exists(scaler_path):
+        raise FileNotFoundError(f"Scaler file not found:\n{scaler_path}")
+    return joblib.load(scaler_path)
 
-def get_unique_values(data, feature):
-    return data[feature].unique().tolist()
+@st.cache_data
+def load_frequency_encoding():
+    if not os.path.exists(frequency_path):
+        raise FileNotFoundError(f"Frequency encoding file not found:\n{frequency_path}")
+    with open(frequency_path, "r", encoding="utf-8") as file:
+        return json.load(file)
 
-def get_unique_values_crime_type(data, feature):
-    return data[feature].unique().tolist()
+def get_unique_values(dataframe, feature):
+    if feature not in dataframe.columns:
+        return []
+    values = dataframe[feature].dropna().astype(str).str.strip()
+    values = values[~values.str.lower().isin(["", "unknown", "nan"])]
+    return sorted(values.unique().tolist())
 
+def encode_category(frequency_data, feature, selected_value):
+    feature_mapping = frequency_data.get(feature, {})
+    return feature_mapping.get(selected_value, 0)
 
-
-
+def validate_scaler_features(scaler):
+    expected_feature_count = len(MODEL_FEATURES)
+    if hasattr(scaler, "n_features_in_"):
+        actual_feature_count = scaler.n_features_in_
+        if actual_feature_count != expected_feature_count:
+            st.error("⚠️ Existing preprocessing artifacts are incompatible with the corrected model.")
+            st.warning(f"The current scaler expects {actual_feature_count} features, but CrimeNexus now uses {expected_feature_count} features.")
+            st.info("The recidivism model and scaler must be retrained without the protected `Caste` attribute before prediction can be enabled.")
+            st.code("Correct model features:\n\nDistrict_Name\nage\nProfession\nPresentCity")
+            return False
+    return True
 
 def predictive_modeling_recidivism():
-    st.subheader("Repeat Offense Prediction App")
-    st.write("Predict whether a previous accused, will again commit a crime or not")
+    st.subheader("Repeat Offense Prediction (Experimental Recidivism Model)")
+    st.write("Explore an experimental machine-learning estimate using historical research data.")
+    st.warning("⚠️ This module is a research prototype. Its output must not be used to determine guilt, target an individual, or make an operational law-enforcement decision.")
 
-    h2o.init()
-    # Load the model
-    model = load_model_recidivism()
-
-    # Get the base path for the app
-    base_path = os.path.dirname(os.path.abspath(__file__))
-    # Go up one level to the project root
-    project_root = os.path.abspath(os.path.join(base_path, '..'))
-    # Create the full path to the scaler file
-    scaler_path = os.path.join(project_root, 'models', 'Recidivism_model', 'scaler.pkl')
-    # Load the scaler using the absolute path
-    scaler = joblib.load(scaler_path)
-    
+    h2o_ready = init_h2o()
+    if not h2o_ready:
+        st.info("ℹ️ **Java (JRE 8+) Environment Requirement**: Local H2O AutoML execution requires Java JRE to run predictions. Please install Java 8+ to enable live ML inferences.")
 
     cleaned_data = load_data_recidivism()
-    # Get unique values for categorical features
-    unique_castes = get_unique_values(cleaned_data, 'Caste')
-    unique_professions = get_unique_values(cleaned_data, 'Profession')
-    unique_districts = get_unique_values(cleaned_data, 'District_Name')
-    unique_cities = get_unique_values(cleaned_data, 'PresentCity')
+    if cleaned_data is None:
+        return
 
+    try:
+        scaler = load_scaler()
+    except Exception as error:
+        st.error("Unable to load preprocessing scaler.")
+        return
 
-    # Get user inputs
-    age = st.number_input("Age", min_value=7, max_value=100)
-    caste = st.selectbox("Caste", unique_castes)
-    profession = st.selectbox("Profession", unique_professions)
-    present_district = st.selectbox("Crime District", unique_districts)
-    present_city = st.selectbox("Criminal Present City", unique_cities)
+    if not validate_scaler_features(scaler):
+        return
 
-    # Perform Encoding
-    frequency_path = os.path.join(project_root, 'models', 'Recidivism_model', 'frequency_encoding.json')
-    f = open(frequency_path)
-    frequency = json.load(f)
-    caste = frequency["Caste"][caste]
-    profession = frequency["Profession"][profession]
-    present_district = frequency["District_Name"][present_district]
-    present_city = frequency["PresentCity"][present_city]
+    try:
+        frequency = load_frequency_encoding()
+    except Exception as error:
+        st.error("Unable to load frequency encoding data.")
+        return
 
+    unique_professions = get_unique_values(cleaned_data, "Profession")
+    unique_districts = get_unique_values(cleaned_data, "District_Name")
+    unique_cities = get_unique_values(cleaned_data, "PresentCity")
 
-    # Create a new data point
-    new_data = pd.DataFrame({
-        'District_Name': [present_district],
-        'age': [age],
-        'Caste': [caste],
-        'Profession': [profession],
-        'PresentCity': [present_city],
-    })
+    with st.form("recidivism_prediction_form"):
+        col1, col2 = st.columns(2)
+        with col1:
+            age = st.number_input("Age", min_value=18, max_value=100, value=30, step=1)
+            profession = st.selectbox("Profession", unique_professions)
+        with col2:
+            present_district = st.selectbox("Recorded Crime District", unique_districts)
+            present_city = st.selectbox("Present City", unique_cities)
 
-    # Perform Standardisation
-    new_data_scaled = scaler.transform(new_data)
+        submit_prediction = st.form_submit_button("Run Experimental Prediction", type="primary")
 
-    new_df = pd.DataFrame(new_data_scaled, columns = new_data.columns, index = new_data.index)
+    if submit_prediction:
+        if not h2o_ready:
+            st.error("Cannot execute prediction because Java JRE is not detected on system.")
+            return
 
-    new_dataframe = h2o.H2OFrame(new_df)
+        try:
+            model = load_model_recidivism()
+            profession_enc = encode_category(frequency, "Profession", profession)
+            present_district_enc = encode_category(frequency, "District_Name", present_district)
+            present_city_enc = encode_category(frequency, "PresentCity", present_city)
 
+            new_data = pd.DataFrame({
+                "District_Name": [present_district_enc],
+                "age": [age],
+                "Profession": [profession_enc],
+                "PresentCity": [present_city_enc],
+            }, columns=MODEL_FEATURES)
 
-    # Make a prediction
-    if st.button("Predict"):
-        
-        # Make predictions
-        predictions = model.predict(new_dataframe)
+            new_data_scaled = scaler.transform(new_data)
+            scaled_dataframe = pd.DataFrame(new_data_scaled, columns=MODEL_FEATURES, index=new_data.index)
+            h2o_dataframe = h2o.H2OFrame(scaled_dataframe)
 
-        # Convert H2OFrame to pandas DataFrame
-        predictions_df = predictions.as_data_frame()
+            predictions = model.predict(h2o_dataframe)
+            predictions_df = predictions.as_data_frame()
+            pred = predictions_df.loc[0, "predict"]
 
-        # Extract the prediction
-        pred = predictions_df.loc[0, "predict"]
-        # Use the prediction
-        if pred == 0:
-            st.success("🔵 The person is not likely to repeat the crime.")
-        else:
-            st.warning("🔴 The person is likely to repeat the crime.")
-
-
-
-
-
-
+            st.divider()
+            st.subheader("Experimental Model Output")
+            if str(pred).strip() in {"0", "0.0", "False"}:
+                st.success("🔵 **Lower Estimated Repeat-Offense Risk**")
+            else:
+                st.warning("🟠 **Higher Estimated Repeat-Offense Risk**")
+        except Exception as error:
+            st.error(f"Prediction execution notice: {error}")
