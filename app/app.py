@@ -1,23 +1,37 @@
 import os
+import sys
+
+# Ensure app directory has highest priority in sys.path
+app_dir = os.path.dirname(__file__)
+if app_dir not in sys.path:
+    sys.path.insert(0, app_dir)
+
 import requests
 import pandas as pd
 import streamlit as st
 from streamlit_option_menu import option_menu
 
 from Criminal_Profiling import create_criminal_profiling_dashboard
-from Crime_Pattern_Analysis import temporal_analysis, chloropleth_maps, crime_hotspots
+from Crime_Pattern_Analysis import (
+    temporal_analysis,
+    chloropleth_maps,
+    crime_hotspots,
+    hotspot_evolution_slider,
+    crime_forecasting_engine,
+    crime_anomaly_detection
+)
 from Predictive_modeling import predictive_modeling_recidivism
 from Resource_Allocation import resource_allocation
 from Continuous_Learning_and_Feedback import continuous_learning_and_feedback
 
-st.set_page_config(page_title="Crime Nexus (CT-DFIR-01)", page_icon="🚔", layout="wide")
+st.set_page_config(page_title="CrimeNexus (CT-DFIR-01)", page_icon="🚔", layout="wide")
 st.warning("⚠️ **PROOF-OF-CONCEPT — NOT FOR OPERATIONAL USE** | CT-DFIR-01 Research & Analytics System")
 
 root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 with st.sidebar:
     selected = option_menu(
-        "Predictive Guardians", 
+        "CrimeNexus", 
         [
             'Home', 
             'Crime Pattern Analysis', 
@@ -55,28 +69,28 @@ with st.sidebar:
     )
 
 if selected == "Home":
-    st.title("Welcome to Predictive Guardians 🚔💻")
+    st.title("Welcome to CrimeNexus 🚔💻")
 
     col1, col2 = st.columns(2)
 
     with col1:
         st.markdown(
             """
-            Predictive Guardians is an innovative, AI-powered solution that revolutionizes the way law enforcement agencies approach public safety. By utilizing advanced data analysis and machine learning, our platform empowers agencies to make data-driven decisions, enabling them to allocate resources more efficiently and effectively.
+            CrimeNexus is an innovative, AI-powered solution that revolutionizes the way law enforcement agencies approach public safety. By utilizing advanced data analysis and machine learning, our platform empowers agencies to make data-driven decisions, enabling them to allocate resources more efficiently and effectively.
             """
         )
         st.markdown(
             """
-            Predictive Guardians provides law enforcement agencies with actionable intelligence to stay one step ahead of crime. Key analytical capabilities include:
+            CrimeNexus provides law enforcement agencies with actionable intelligence to stay one step ahead of crime. Key analytical capabilities include:
             """
         )
         st.markdown(
             """
-            - **Crime Pattern Analysis**: Uncover spatial, temporal, and hotspot crime trends.
-            - **Criminal Profiling**: Understand offender demographics and criminal behavior patterns.
-            - **Predictive Modeling**: Forecast recidivism and repeat offense risks using AutoML ensembles.
-            - **Resource Allocation**: Optimize personnel deployment using mathematical programming (PuLP).
-            - **Continuous Learning & Feedback**: Incorporate stakeholder feedback, real-time alert monitoring, and automated notifications.
+            - **Crime Pattern Analysis**: Spatial, temporal, hotspot evolution, forecasting, and anomaly detection.
+            - **Criminal Profiling**: Offender demographics and criminal behavior analytics.
+            - **Predictive Modeling**: Recidivism risk estimation using AutoML ensembles.
+            - **Resource Allocation**: Personnel deployment optimization using mathematical programming (PuLP).
+            - **Continuous Learning & Feedback**: Stakeholder feedback, real-time alert monitoring, and email notifications.
             """
         )
 
@@ -99,24 +113,38 @@ if selected == "Crime Pattern Analysis":
         data_file_path = os.path.join(root_dir, 'Component_datasets', 'Crime_Pattern_Analysis_Cleaned.csv')
 
         crime_pattern_analysis = pd.read_csv(data_file_path)
+        crime_pattern_analysis['Date'] = pd.to_datetime(crime_pattern_analysis[['Year', 'Month', 'Day']])
         mean_lat = crime_pattern_analysis['Latitude'].mean()
         mean_lon = crime_pattern_analysis['Longitude'].mean()
         return mean_lat, mean_lon, geojson_data, crime_pattern_analysis
 
     mean_lat, mean_lon, geojson_data, crime_pattern_analysis = load_data()
 
-    st.subheader("Temporal Analysis of Crime Data")
-    temporal_analysis(crime_pattern_analysis)
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "📊 Temporal & Choropleth Maps",
+        "🗺️ Hotspot Evolution (Time Slider)",
+        "🔮 Crime Forecasting Engine (7/30 Days)",
+        "🚨 Anomaly & Spike Detection"
+    ])
 
-    st.subheader("Choropleth Maps")
-    chloropleth_maps(crime_pattern_analysis, geojson_data, mean_lat, mean_lon)
+    with tab1:
+        st.subheader("Temporal Analysis of Crime Data")
+        temporal_analysis(crime_pattern_analysis)
 
-    st.subheader("Crime Hotspot Map")
-    crime_pattern_analysis = crime_pattern_analysis.reset_index(drop=True)
-    mean_lat_sampled = crime_pattern_analysis['Latitude'].mean()
-    mean_lon_sampled = crime_pattern_analysis['Longitude'].mean()
-    crime_pattern_analysis['Date'] = pd.to_datetime(crime_pattern_analysis[['Year', 'Month', 'Day']])
-    crime_hotspots(crime_pattern_analysis, mean_lat_sampled, mean_lon_sampled)
+        st.subheader("Choropleth Maps")
+        chloropleth_maps(crime_pattern_analysis, geojson_data, mean_lat, mean_lon)
+
+        st.subheader("Crime Hotspot Map")
+        crime_hotspots(crime_pattern_analysis, mean_lat, mean_lon)
+
+    with tab2:
+        hotspot_evolution_slider(crime_pattern_analysis, mean_lat, mean_lon)
+
+    with tab3:
+        crime_forecasting_engine(crime_pattern_analysis)
+
+    with tab4:
+        crime_anomaly_detection(crime_pattern_analysis)
 
 if selected == "Criminal Profiling":
     create_criminal_profiling_dashboard()
@@ -134,4 +162,4 @@ if selected == "Continuous Learning and Feedback":
 
 if selected == "Documentation and Resources":
     st.subheader("Documentation & Project Resources 📖")
-    st.markdown('Click [here](https://github.com/VishalKumar-S/Predictive_Guardians/blob/main/Readme.md) to view the project documentation and resources repository.')
+    st.markdown('Click [here](https://github.com/Sahil200520/CrimeNexus/blob/main/Readme.md) to view the project documentation and resources repository.')
